@@ -10,7 +10,7 @@ from wingedsheep.carcassonne.utils.state_updater import StateUpdater
 class CarcassonneGame:
 
     def __init__(self,
-                 players: int = 2,
+                 players: int = 2,board_size: (int, int) = (35, 35),
                  tile_sets: [TileSet] = (TileSet.BASE, TileSet.THE_RIVER, TileSet.INNS_AND_CATHEDRALS),
                  supplementary_rules: [SupplementaryRule] = (SupplementaryRule.FARMERS, SupplementaryRule.ABBOTS)):
         self.players = players
@@ -19,7 +19,8 @@ class CarcassonneGame:
         self.state: CarcassonneGameState = CarcassonneGameState(
             tile_sets=tile_sets,
             players=players,
-            supplementary_rules=supplementary_rules
+            supplementary_rules=supplementary_rules,
+            board_size=board_size
         )
         self.visualiser = CarcassonneVisualiser()
 
@@ -37,6 +38,9 @@ class CarcassonneGame:
 
     def get_current_player(self) -> int:
         return self.state.current_player
+    
+    def get_obs(self):
+        return self.state.get_obs()
 
     def get_possible_actions(self) -> [Action]:
         return ActionUtil.get_possible_actions(self.state)

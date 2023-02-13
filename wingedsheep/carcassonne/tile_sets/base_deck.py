@@ -69,8 +69,7 @@ base_tiles = {
                     Side.TOP_RIGHT
                 ],
                 tile_connections=[
-                    FarmerSide.TLL, FarmerSide.TLT,
-                    FarmerSide.TRT, FarmerSide.TRR
+                    FarmerSide.TLL, FarmerSide.TRR
                 ],
                 city_sides=[
                     Side.TOP

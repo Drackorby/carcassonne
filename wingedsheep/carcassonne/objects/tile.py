@@ -66,6 +66,7 @@ class Tile:
 
     def has_river(self) -> bool:
         return len(self.river) > 0
+    
 
     def get_type(self, side: Side):
         if self.unplayable_sides.__contains__(side):
