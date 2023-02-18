@@ -14,6 +14,9 @@ from wingedsheep.carcassonne.utils.action_util import ActionUtil
 from wingedsheep.carcassonne.utils.state_updater import StateUpdater
 from wingedsheep.carcassonne.carcassonne_game import CarcassonneGame  
 from wingedsheep.carcassonne.utils.points_collector import PointsCollector
+from wingedsheep.carcassonne.objects.actions.tile_action import TileAction
+from wingedsheep.carcassonne.objects.actions.pass_action import PassAction
+from wingedsheep.carcassonne.objects.actions.meeple_action import MeepleAction
 
     
 class CarcassoneEnv(gym.Env):
@@ -114,10 +117,27 @@ class CarcassoneEnv(gym.Env):
         valid_actions = self.game.get_possible_actions() 
 
         reward = -100
+        valid = False
+        i = 0
 
-        if action in valid_actions:
+        while i < len(valid_actions):
+            valid_action = valid_actions[i]
+            if type(action) == type(valid_action):
+                if isinstance(action, TileAction):
+                    if action.coordinate == valid_action.coordinate and action.tile_rotations == valid_action.tile_rotations:
+                        valid = True
+                if isinstance(action, PassAction):
+                    valid = True
+                if isinstance(action, MeepleAction):
+                    if action.meeple_type == valid_action.meeple_type and action.coordinate_with_side == valid_action.coordinate_with_side and action.remove == valid_action.remove:
+                        valid = True
+            i += 1
+                        
+
+
+        if valid:
             self.game.step(player_id,action)
-        
+                    
             scores = PointsCollector.count_score(self.game.state)
             my_score = scores[player_id]
             del scores[player_id]

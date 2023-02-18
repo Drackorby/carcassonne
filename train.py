@@ -13,22 +13,22 @@ import torch
 register(id='Carcassone-v0',entry_point='gym_data.envs:CarcassoneEnv',) 
 
 # Parallel environments
-env = make_vec_env('gym_data:Carcassone-v0',n_envs =64)
+env = make_vec_env('gym_data:Carcassone-v0',n_envs =128)
 
 # from stable_baselines3.common.env_checker import check_env
 # check_env(env)
 
-model = A2C("MultiInputPolicy", env, verbose=1,device="auto",learning_rate=0.001)
+model = A2C("MultiInputPolicy", env, verbose=1,device="auto") # , learning_rate=0.002)
 
-model.set_parameters("carcassone_model11")
+model.set_parameters("carcassone_model")
 model.learn(total_timesteps=10000000)
-model.save("carcassone_model12")
+model.save("carcassone_model")
 # model.to(device)
 
 obs = env.reset()
 
-for i in range(500):
+for i in range(100):
 
-    action, _state = model.predict(obs, deterministic=False)
+    action, _state = model.predict(obs, deterministic=True)
     obs, reward, done, info = env.step(action)
     # env.render(mode="rgb_array")
