@@ -8,3 +8,11 @@ class TileAction(Action):
         self.tile = tile
         self.coordinate = coordinate
         self.tile_rotations = tile_rotations
+
+    def __eq__(self, other):
+        if isinstance(other, TileAction):
+            return self.coordinate == other.coordinate and self.tile_rotations == other.tile_rotations
+        return False
+
+    def __str__(self):
+        return "Coordinate: " + self.coordinate.__str__() + "Rotation: " + str(self.tile_rotations)

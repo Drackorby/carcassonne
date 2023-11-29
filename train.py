@@ -10,12 +10,18 @@ from gym.envs.registration import register
 from gym import spaces
 import torch as th
 from torch import nn
+import numpy as np
+from sb3_contrib.common.wrappers import ActionMasker
+from sb3_contrib.ppo_mask import MaskablePPO
 
+import gym
+
+from gym_data.envs import CarcassoneEnv
 # device = torch.device("cuda")
 register(id='Carcassone-v0',entry_point='gym_data.envs:CarcassoneEnv',) 
 
 # Parallel environments
-env = make_vec_env('gym_data:Carcassone-v0',n_envs =128)
+# env = make_vec_env('gym_data:Carcassone-v0',n_envs =32)
 
 class CustomCombinedExtractor(BaseFeaturesExtractor):
     def __init__(self, observation_space: spaces.Dict):
@@ -27,10 +33,11 @@ class CustomCombinedExtractor(BaseFeaturesExtractor):
 
         extractors = {}
 
-        total_concat_size = 0
+        total_concat_size = 128
         # We need to know size of the output of this extractor,
         # so go over all the spaces and compute output feature sizes
         for key, subspace in observation_space.spaces.items():
+            # print(key)
             if key == "image":
                 # We will just downsample one channel of the image by 4x4 and flatten.
                 # Assume the image is single-channel (subspace.shape[0] == 0)
@@ -102,14 +109,36 @@ class CustomCombinedExtractor(BaseFeaturesExtractor):
 
 policy_kwargs = dict(
     features_extractor_class=CustomCombinedExtractor,
-    net_arch = [1024, dict(pi=[ 256, 128], vf=[512, 64])]
+    net_arch = [2048, dict(pi=[ 256, 128], vf=[512, 64])]
 )
 
-model = A2C("MultiInputPolicy", env,policy_kwargs=policy_kwargs, verbose=1,device="auto") # , learning_rate=0.002)
+def mask_fn(env: gym.Env) -> np.ndarray:
+    # Do whatever you'd like in this function to return the action mask
+    # for the current env. In this example, we assume the env has a
+    # helpful method we can rely on.
+    return env.valid_action_mask()
 
-model.set_parameters("carcassone_model")
-model.learn(total_timesteps=10000000)
-model.save("carcassone_model")
+
+def make_env():
+    env = CarcassoneEnv()
+    env = ActionMasker(env, mask_fn)
+    return env
+
+
+# env = ActionMasker(env, mask_fn) 
+env = make_vec_env(make_env, n_envs=32)
+
+model = MaskablePPO("MultiInputPolicy", env,policy_kwargs=policy_kwargs, verbose=1,device="auto", n_steps=5, batch_size=64, n_epochs=2, learning_rate=0.001)
+import time
+model.set_parameters("carcassone_model_mask_PPO3")
+start = time.time()
+model.learn(total_timesteps=131072)
+end = time.time()
+elapsed_time = end - start
+
+print("Elapsed time: ", elapsed_time // 60, " minutes")
+
+model.save("carcassone_model_mask_PPO4")
 
 
 

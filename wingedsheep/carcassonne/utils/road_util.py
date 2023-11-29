@@ -14,30 +14,32 @@ from wingedsheep.carcassonne.objects.tile import Tile
 class RoadUtil:
 
     @classmethod
-    def opposite_edge(cls, road_position: CoordinateWithSide):
-        if road_position.side == Side.TOP:
+    def opposite_edge(cls, road_position: CoordinateWithSide, board):
+        if road_position.side == Side.TOP and road_position.coordinate.row - 1 > 0:
             return CoordinateWithSide(Coordinate(road_position.coordinate.row - 1, road_position.coordinate.column),
                                       Side.BOTTOM)
-        elif road_position.side == Side.RIGHT:
+        elif road_position.side == Side.RIGHT and road_position.coordinate.column + 1 < len(board):
             return CoordinateWithSide(Coordinate(road_position.coordinate.row, road_position.coordinate.column + 1),
                                       Side.LEFT)
-        elif road_position.side == Side.BOTTOM:
+        elif road_position.side == Side.BOTTOM and road_position.coordinate.row + 1 < len(board):
             return CoordinateWithSide(Coordinate(road_position.coordinate.row + 1, road_position.coordinate.column),
                                       Side.TOP)
-        elif road_position.side == Side.LEFT:
+        elif road_position.side == Side.LEFT and road_position.coordinate.column - 1 > 0:
             return CoordinateWithSide(Coordinate(road_position.coordinate.row, road_position.coordinate.column - 1),
                                       Side.RIGHT)
 
     @classmethod
     def find_road(cls, game_state: CarcassonneGameState, road_position: CoordinateWithSide) -> Road:
         roads: Set[CoordinateWithSide] = set(cls.outgoing_roads_for_position(game_state, road_position))
-        open_connections: Set[CoordinateWithSide] = set(map(lambda x: cls.opposite_edge(x), roads))
+        open_connections: Set[CoordinateWithSide] = set(map(lambda x: cls.opposite_edge(x, game_state.board), roads))
+        open_connections.discard(None)
         explored: Set[CoordinateWithSide] = roads.union(open_connections)
         while len(open_connections) > 0:
             open_connection: CoordinateWithSide = open_connections.pop()
             new_roads = cls.outgoing_roads_for_position(game_state, open_connection)
             roads = roads.union(new_roads)
-            new_open_connections = set(map(lambda x: cls.opposite_edge(x), new_roads))
+            new_open_connections = set(map(lambda x: cls.opposite_edge(x, game_state.board), new_roads))
+            new_open_connections.discard(None)
             explored = explored.union(new_roads)
             new_open_connection: CoordinateWithSide
             for new_open_connection in new_open_connections:

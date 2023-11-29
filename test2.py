@@ -11,9 +11,28 @@ from gym.envs.registration import register
 from gym import spaces
 import torch as th
 from torch import nn
+from sb3_contrib.ppo_mask import MaskablePPO
 
 # device = torch.device("cuda")
 register(id='Carcassone-v0',entry_point='gym_data.envs:CarcassoneEnv',) 
+
+from gym_data.envs import CarcassoneEnv
+import numpy  as np
+from sb3_contrib.common.wrappers import ActionMasker
+
+
+def mask_fn(env: gym.Env) -> np.ndarray:
+    # Do whatever you'd like in this function to return the action mask
+    # for the current env. In this example, we assume the env has a
+    # helpful method we can rely on.
+    return env.valid_action_mask()
+
+
+def make_env():
+    env = CarcassoneEnv()
+    env = ActionMasker(env, mask_fn)
+    return env
+
 
 # Parallel environments
 env = gym.make('gym_data:Carcassone-v0')
@@ -28,11 +47,10 @@ class CustomCombinedExtractor(BaseFeaturesExtractor):
 
         extractors = {}
 
-        total_concat_size = 0
+        total_concat_size = 128
         # We need to know size of the output of this extractor,
         # so go over all the spaces and compute output feature sizes
         for key, subspace in observation_space.spaces.items():
-            # print(key, subspace)
             if key == "image":
                 # We will just downsample one channel of the image by 4x4 and flatten.
                 # Assume the image is single-channel (subspace.shape[0] == 0)
@@ -52,14 +70,14 @@ class CustomCombinedExtractor(BaseFeaturesExtractor):
                 extractors[key] = nn.Linear(subspace.shape[0], 128)
                 total_concat_size += 128
             elif key == "city_planes":
-                extractors[key] = nn.Sequential(nn.Linear(subspace.shape[0], 2048),nn.Linear(2048, 512), nn.Linear(512, 128)) 
+                extractors[key] = nn.Sequential(nn.Linear(subspace.shape[0], 1024),nn.Linear(1024, 512), nn.Linear(512, 128)) 
                 total_concat_size += 128
             elif key == "farmer_planes":
-                extractors[key] = nn.Sequential(nn.Linear(subspace.shape[0], 2048),nn.Linear(2048, 512), nn.Linear(512, 128)) 
+                extractors[key] = nn.Sequential(nn.Linear(subspace.shape[0], 1024),nn.Linear(1024, 512), nn.Linear(512, 128)) 
                 total_concat_size += 128
             elif key == "field_planes":
-                extractors[key] = nn.Sequential(nn.Linear(subspace.shape[0], 4096),nn.Linear(4096, 2048),nn.Linear(2048, 512), nn.Linear(512, 128)) 
-                total_concat_size += 256
+                extractors[key] = nn.Sequential(nn.Linear(subspace.shape[0], 1024),nn.Linear(1024, 512), nn.Linear(512, 128)) 
+                total_concat_size += 128
             elif key == "flowers_plane":
                 extractors[key] = nn.Linear(subspace.shape[0], 128)
                 total_concat_size += 128
@@ -104,16 +122,16 @@ class CustomCombinedExtractor(BaseFeaturesExtractor):
 
 policy_kwargs = dict(
     features_extractor_class=CustomCombinedExtractor,
-    net_arch = [1024, dict(pi=[ 256, 128], vf=[512, 64])]
+    net_arch = [2048, dict(pi=[ 256, 128], vf=[512, 64])]
 )
 
-model1 = A2C("MultiInputPolicy", env, policy_kwargs=policy_kwargs, verbose=1,device="auto", learning_rate=0.005)
+
+model1 = MaskablePPO("MultiInputPolicy", env,policy_kwargs=policy_kwargs, verbose=1,device="auto", n_steps=256, batch_size=64, n_epochs=1) # , learning_rate=0.002)
+model2 = MaskablePPO("MultiInputPolicy", env,policy_kwargs=policy_kwargs, verbose=1,device="auto", n_steps=256, batch_size=64, n_epochs=1) # , learning_rate=0.002)
 
 
-model2 = A2C("MultiInputPolicy", env, policy_kwargs=policy_kwargs, verbose=1,device="auto", learning_rate=0.005)
-
-model1.set_parameters("carcassone_model")
-model2.set_parameters("carcassone_model")
+model1.set_parameters("carcassone_model_mask_PPO")
+model2.set_parameters("carcassone_model_mask_PPO")
 
 obs = env.reset()
 done = False
@@ -139,10 +157,7 @@ while not done:
 
 
 # action = [1, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 1, 0, 1, 1, 1, 0]
-from wingedsheep.carcassonne.carcassonne_game import CarcassonneGame  
-from wingedsheep.carcassonne.utils.action_util import ActionUtil
-from wingedsheep.carcassonne.tile_sets.supplementary_rules import SupplementaryRule
-from wingedsheep.carcassonne.tile_sets.tile_sets import TileSet
+
 # from wingedsheep.carcassonne.objects.actions.tile_action import TileAction
 # print(type(TileAction))
 

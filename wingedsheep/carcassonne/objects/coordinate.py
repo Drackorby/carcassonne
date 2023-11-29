@@ -7,5 +7,11 @@ class Coordinate:
     def __eq__(self, other):
         return self.row == other.row and self.column == other.column
 
+    def __str__(self):
+        attributes = ""
+        for attribute, value in vars(self).items():
+            attributes += f"{attribute}: {value}\n"
+        return attributes
+
     def __hash__(self):
         return hash((self.row, self.column))

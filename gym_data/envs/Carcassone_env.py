@@ -1,8 +1,9 @@
 import numpy as np
 
-import gym
-from gym import spaces
+import gymnasium as gym
 
+from gymnasium import spaces
+import time
 import random
 
 from wingedsheep.carcassonne.carcassonne_game_state import CarcassonneGameState
@@ -12,62 +13,110 @@ from wingedsheep.carcassonne.tile_sets.supplementary_rules import SupplementaryR
 from wingedsheep.carcassonne.tile_sets.tile_sets import TileSet
 from wingedsheep.carcassonne.utils.action_util import ActionUtil
 from wingedsheep.carcassonne.utils.state_updater import StateUpdater
-from wingedsheep.carcassonne.carcassonne_game import CarcassonneGame  
+from wingedsheep.carcassonne.carcassonne_game import CarcassonneGame
 from wingedsheep.carcassonne.utils.points_collector import PointsCollector
 from wingedsheep.carcassonne.objects.actions.tile_action import TileAction
 from wingedsheep.carcassonne.objects.actions.pass_action import PassAction
 from wingedsheep.carcassonne.objects.actions.meeple_action import MeepleAction
+from wingedsheep.carcassonne.objects.game_phase import GamePhase
 
-    
+import requests
+import websockets
+import json
+import asyncio
+
+
+class MyWebSocketClient:
+    def __init__(self, server_url):
+        self.server_url = server_url
+        self.ws = None
+
+    async def connect(self):
+        self.ws = await websockets.connect(self.server_url)
+        print("WebSocket connected")
+
+    async def send(self, data):
+        if self.ws:
+            await self.ws.send(json.dumps(data))
+            response = await self.ws.recv()
+            response = json.loads(response)
+            return response["action"]
+        else:
+            return False
+
+    async def close(self):
+        if self.ws:
+            await self.ws.close()
+
+
+def numpy_array_to_list(obj):
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, list):
+        return [numpy_array_to_list(item) for item in obj]
+    elif isinstance(obj, dict):
+        return {key: numpy_array_to_list(value) for key, value in obj.items()}
+    else:
+        return obj
+
+
 class CarcassoneEnv(gym.Env):
-    metadata = {"render_modes": ["human", "rgb_array",None], "render_fps": 4}
+    metadata = {"render_modes": ["human", "rgb_array", None], "render_fps": 4}
+    possible_actions = []
 
     def __init__(self, render_mode=None):
 
+        self.verbose = True
         n_players = 2
 
-        board_size = 30
+        board_size = 10
 
+        self.max_steps = 101
+        self.curr_step = 0
 
-        self.game = CarcassonneGame(  
-            players=n_players,  board_size = (board_size,board_size),
-            tile_sets=[TileSet.BASE, TileSet.THE_RIVER, TileSet.INNS_AND_CATHEDRALS],  
-            supplementary_rules=[SupplementaryRule.ABBOTS, SupplementaryRule.FARMERS]  
-        )         
-        # self.game.state.get_obs()
+        self.game = CarcassonneGame(
+            players=n_players, board_size=(board_size, board_size),
+            tile_sets=[TileSet.BASE],
+            supplementary_rules=[], visualize=False
+        )
 
-        other_properties_space = np.ones(16)*2
+        other_properties_space = np.ones(12) * 2
 
+        other_properties_space[-4] = 250
         other_properties_space[-3] = 250
         other_properties_space[-2] = n_players
         other_properties_space[-1] = 3
         other_properties_space[0] = 15
         other_properties_space[1] = 10
-        other_properties_space[5] = 59
-        other_properties_space[6] = 8 # Meeples
+        other_properties_space[5] = 66
+        other_properties_space[6] = 8
         other_properties_space[7] = 8
 
         self.observation_space = spaces.Dict(
-        {
-            "city_planes": spaces.MultiBinary(15*board_size*board_size),
-            "road_planes": spaces.MultiBinary(10*board_size*board_size),
-            "chapel_plane": spaces.MultiBinary(board_size*board_size),
-            "shield_plane": spaces.MultiBinary(board_size*board_size),
-            "flowers_plane": spaces.MultiBinary(board_size*board_size),
-            "field_planes": spaces.MultiBinary(59*board_size*board_size),
-            "meeple_planes": spaces.MultiBinary(5*n_players*board_size*board_size),
-            "abbot_planes": spaces.MultiBinary(n_players*board_size*board_size),
-            "farmer_planes": spaces.MultiBinary(9*n_players*board_size*board_size),
-            "big_farmer_planes": spaces.MultiBinary(9*n_players*board_size*board_size),
-            "big_meeples_planes": spaces.MultiBinary(5*n_players*board_size*board_size),
-            "other_properties_plane": spaces.MultiDiscrete(other_properties_space)}
+            {
+                "city_planes": spaces.MultiBinary([15, board_size, board_size]),
+                "road_planes": spaces.MultiBinary([10, board_size, board_size]),
+                "chapel_plane": spaces.MultiBinary([board_size, board_size]),
+                "shield_plane": spaces.MultiBinary([board_size, board_size]),
+                "flowers_plane": spaces.MultiBinary([board_size, board_size]),
+                "field_planes": spaces.MultiBinary([66, board_size, board_size]),
+                "meeple_planes": spaces.MultiBinary([5 * n_players, board_size, board_size]),
+                "abbot_planes": spaces.MultiBinary([n_players, board_size, board_size]),
+                "farmer_planes": spaces.MultiBinary([5 * n_players, board_size, board_size]),
+                "big_farmer_planes": spaces.MultiBinary([5 * n_players, board_size, board_size]),
+                "big_meeples_planes": spaces.MultiBinary([5 * n_players, board_size, board_size]),
+                "other_properties_plane": spaces.MultiDiscrete(other_properties_space)}
         )
-        
 
-        self.action_space = spaces.MultiBinary(3+ 2*board_size+ 4 + 9 +5)
-
+        self.action_space = spaces.MultiDiscrete([3, board_size, board_size, 4, 9, 5])
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
+
+        self.multi_discrete_action_space = [3, board_size, board_size, 4, 9, 5]
+
+        # Calculate the maximum number of actions
+        self.max_num_actions = np.prod(self.multi_discrete_action_space)
+        self.action_mask = np.zeros((self.max_num_actions, 6))
 
         """
         If human-rendering is used, `self.window` will be a reference
@@ -79,90 +128,215 @@ class CarcassoneEnv(gym.Env):
         self.window = None
         self.clock = None
 
+        self.valid_total_moves = 0
+        self.total_tried_moves = 0
+        self.past_score = 0
+        self.progress = 1
+        self.self_play = True
+        self.ws = None
+        self.id = -1
 
+    def connect_ws(self, **kwargs):
+        for key, value in kwargs.items():
+            if isinstance(value, dict):
+                for key1, value1 in value.items():
+                    if key1 == "i":
+                        self.id = value1
+        self.ws = MyWebSocketClient('ws://127.0.0.1:8000/action/' + str(self.id) + "/")
 
-    def reset(self):
-        self.game.reset()
-        observation = self.game.get_obs()
-        return observation
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(self.ws.connect())
 
-    def test_step(self,action,player_id):
+    def generate_trajectory(self, trajectory_length):
+        """
+        Generate a trajectory of a specified length.
 
-        action = ActionUtil.create_action(action,self.game.state.next_tile,self.game.state.board,self.game.state,player_id)
-        valid_actions = self.game.get_possible_actions() 
+        Args:
+            trajectory_length (int): The length of the trajectory to generate.
 
-        reward = -1000
+        Returns:
+            list of tuples: A list of (state, action, reward, next_state, done) tuples.
+        """
+        prev_verbose = self.verbose
+        self.verbose = False
 
-        if action in valid_actions:
-            self.game.step(player_id,action)
-        
-            scores = PointsCollector.count_score(self.game.state)
-            my_score = scores[player_id]
-            del scores[player_id]
-            reward = my_score - np.max(scores)
+        trajectory = []
 
+        for _ in range(trajectory_length):
+            valid_actions = self.game.get_possible_actions()
+            action = ActionUtil.code_action(random.choice(valid_actions))
 
-        observation = self.game.get_obs()
-        terminated = self.game.is_finished()
-        info = {}
+            state = self.game.get_obs()
+            next_state, reward, terminated, truncated, info = self.step(action)
+            done = terminated
+            operation = {
+                'state': state,
+                'action': action,
+                'done': done,
+            }
+            trajectory.append(operation)
 
-        return observation, reward, terminated, info
-    
+            if done:
+                self.reset()
+
+        self.verbose = prev_verbose
+
+        return trajectory
+
+    def reset(self, seed=None, options=None):
+
+        rand_seed = self.set_random()
+        self.game.reset(rand_seed)
+        self.curr_step = 0
+
+        if self.ws is None and self.id != -1:
+            self.ws = MyWebSocketClient('ws://127.0.0.1:8000/action/' + str(self.id) + "/")
+
+            loop = asyncio.get_event_loop()
+            loop.run_until_complete(self.ws.connect())
+
+        observation, terminated = self.other_player_move()
+
+        self.valid_total_moves = 0
+        self.total_tried_moves = 0
+
+        self.past_score = 0
+
+        return observation, {}
 
     def get_current_player(self):
-        return self.game.get_current_player()  
-    def step(self,action,player_id = 0):
+        return self.game.get_current_player()
 
-        action = ActionUtil.create_action(action,self.game.state.next_tile,self.game.state.board,self.game.state,player_id)
-        valid_actions = self.game.get_possible_actions() 
-
-        reward = -100
+    def is_action_valid(self, phase, valid_actions, action ):
         valid = False
         i = 0
 
-        while i < len(valid_actions):
-            valid_action = valid_actions[i]
-            if type(action) == type(valid_action):
-                if isinstance(action, TileAction):
-                    if action.coordinate == valid_action.coordinate and action.tile_rotations == valid_action.tile_rotations:
-                        valid = True
-                if isinstance(action, PassAction):
-                    valid = True
-                if isinstance(action, MeepleAction):
-                    if action.meeple_type == valid_action.meeple_type and action.coordinate_with_side == valid_action.coordinate_with_side and action.remove == valid_action.remove:
-                        valid = True
-            i += 1
-                        
+        if phase == GamePhase.TILES:
+            action_to_validate = np.array(action[0:4])
+        else:
+            action_to_validate = np.concatenate((action[0:3], action[4:]))
 
+        while i < len(valid_actions):
+            coded_valid_action = ActionUtil.code_action(valid_actions[i])
+            if phase == GamePhase.TILES:
+                coded_valid_action = np.array(coded_valid_action[0:4])
+            else:
+                coded_valid_action = np.concatenate((coded_valid_action[0:3], coded_valid_action[4:]))
+
+            error = abs(np.linalg.norm(action_to_validate - coded_valid_action))
+            if error == 0:
+                valid = True
+                break
+            i += 1
+        return valid
+
+    def set_random(self, random_num=None):
+        if random_num is None:
+            random_num = self.progress
+        np.random.seed(int(time.time()))
+        random_num = max(random_num, 2)
+        rand_num = np.random.randint(0, random_num)
+        np.random.seed(rand_num)
+
+        random.seed(rand_num)
+        return rand_num
+
+    def step(self, action):
+        valid_actions = self.game.get_possible_actions()
+        player_id = self.game.get_current_player()
+
+        action_obj = ActionUtil.create_action(action, self.game.state.next_tile,
+                                              self.game.state.board, self.game.state, player_id)
+        reward = -1
+        valid = self.is_action_valid(self.game.state.phase, valid_actions, action)
 
         if valid:
-            self.game.step(player_id,action)
-                    
-            scores = PointsCollector.count_score(self.game.state)
-            my_score = scores[player_id]
-            del scores[player_id]
-            reward = my_score - np.max(scores)
+            reward = 1
+            if isinstance(action_obj, TileAction):
+                action_obj.tile.turn(action[3])
 
-        observation = self.game.get_obs()
-        terminated = self.game.is_finished()
+            self.game.step(player_id, action_obj)
+
+            my_score = self.game.state.scores[player_id]
+            reward += max(my_score - self.past_score, 0)
+
+            self.past_score = my_score
+            self.valid_total_moves += 1
+
         info = {}
 
-        player = self.game.get_current_player()  
-        while player != 0:
-            valid_actions = self.game.get_possible_actions()  
-            action = random.choice(valid_actions)  
-            if action is not None:  
-                self.game.step(player, action) 
+        observation, terminated = self.other_player_move()
 
-        return observation, reward, terminated, info
+        self.curr_step += 1
+        self.total_tried_moves += 1
 
-    def render(self,mode,**kwargs):
-        # pass
-        # if self.render_mode == "human":
+        truncated = True if self.curr_step >= self.max_steps or len(valid_actions) == 0 else False
+
+        if terminated:
+            reward += 100
+            PointsCollector.count_final_scores(self.game.state)
+            if self.game.state.get_winner() == 1:
+                reward += 100
+            else:
+                reward -= 10
+
+        return observation, reward, terminated, truncated, info
+
+    def other_player_move(self):
+        player = self.game.get_current_player()
+
+        observation = self.game.get_obs(True if player != 1 else False)
+        terminated = self.game.is_finished()
+        i = 0
+        while player != 1 and not terminated:
+            valid_actions = self.game.get_possible_actions()
+            valid = False
+            if self.self_play and i < 3:
+                loop = asyncio.get_event_loop()
+                action = loop.run_until_complete(self.self_play_get_action(observation))
+                if action:
+                    valid = self.is_action_valid(self.game.state.phase, valid_actions, action)
+
+                if valid:
+                    action = ActionUtil.create_action(action, self.game.state.next_tile,
+                                                      self.game.state.board, self.game.state, player)
+            else:
+                valid_actions = self.game.get_possible_actions()
+                action = random.choice(valid_actions)
+                valid = True
+
+            if valid:
+                self.game.step(player, action)
+
+            player = self.game.get_current_player()
+
+            observation = self.game.get_obs(True if player != 1 else False)
+            terminated = self.game.is_finished()
+            i += 1
+        return observation, terminated
+
+    async def self_play_get_action(self, obs):
+        try:
+            if self.ws:
+                return await self.ws.send(numpy_array_to_list(obs))
+            else:
+                return False
+        except websockets.exceptions.ConnectionClosed as e:
+            print(f"WebSocket connection closed unexpectedly with code {e.code}: {e.reason}")
+            self.ws = None
+
+        finally:
+            return False
+
+
+    def updateProgress(self, progress):
+        progress = int(progress * 100)
+        rand_num = self.set_random(progress)
+        self.game.update_random_num(rand_num)
+
+    def render(self, mode, **kwargs):
         self.game.render()
 
     def close(self):
-        pass
-
-
-
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(self.ws.close())

@@ -28,7 +28,8 @@ class FarmUtil:
     def find_farm(cls, game_state: CarcassonneGameState, farmer_connection_with_coordinate: FarmerConnectionWithCoordinate) -> Farm:
         farmer_connections_with_coordinate: [FarmerConnectionWithCoordinate] = {farmer_connection_with_coordinate}
         open_sides: Set[CoordinateWithFarmerSide] = set(map(lambda x: CoordinateWithFarmerSide(farmer_connection_with_coordinate.coordinate, x), farmer_connection_with_coordinate.farmer_connection.tile_connections))
-        to_explore: Set[CoordinateWithFarmerSide] = set(map(lambda farmer_side: cls.opposite_edge(farmer_side), open_sides))
+        to_explore: Set[CoordinateWithFarmerSide] = set(map(lambda farmer_side: cls.opposite_edge(farmer_side, game_state.board), open_sides))
+        to_explore.discard(None)
         to_ignore: Set[CoordinateWithFarmerSide] = open_sides.union(to_explore)
 
         while len(to_explore) > 0:
@@ -38,7 +39,8 @@ class FarmUtil:
             if new_farmer_connection_with_coordinate is not None:
                 farmer_connections_with_coordinate.add(new_farmer_connection_with_coordinate)
                 new_open_sides: Set[CoordinateWithFarmerSide] = set(map(lambda x: CoordinateWithFarmerSide(new_farmer_connection_with_coordinate.coordinate, x), new_farmer_connection_with_coordinate.farmer_connection.tile_connections))
-                new_to_explore: Set[CoordinateWithFarmerSide] = set(map(lambda farmer_side: cls.opposite_edge(farmer_side), new_open_sides))
+                new_to_explore: Set[CoordinateWithFarmerSide] = set(map(lambda farmer_side: cls.opposite_edge(farmer_side, game_state.board), new_open_sides))
+                new_to_explore.discard(None)
                 to_ignore = to_ignore.union(new_open_sides)
                 new_edge_to_explore: CoordinateWithFarmerSide
                 for new_edge_to_explore in new_to_explore:
@@ -49,26 +51,26 @@ class FarmUtil:
         return Farm(farmer_connections_with_coordinate)
 
     @classmethod
-    def opposite_edge(cls, coordinate_with_farmer_side: CoordinateWithFarmerSide) -> CoordinateWithFarmerSide:
-        if coordinate_with_farmer_side.farmer_side.get_side() == Side.TOP:
+    def opposite_edge(cls, coordinate_with_farmer_side: CoordinateWithFarmerSide, board) -> CoordinateWithFarmerSide:
+        if coordinate_with_farmer_side.farmer_side.get_side() == Side.TOP and coordinate_with_farmer_side.coordinate.row - 1 > 0:
             return CoordinateWithFarmerSide(
                 Coordinate(coordinate_with_farmer_side.coordinate.row - 1,
                            coordinate_with_farmer_side.coordinate.column),
                 SideModificationUtil.opposite_farmer_side(coordinate_with_farmer_side.farmer_side)
             )
-        elif coordinate_with_farmer_side.farmer_side.get_side() == Side.RIGHT:
+        elif coordinate_with_farmer_side.farmer_side.get_side() == Side.RIGHT and coordinate_with_farmer_side.coordinate.column + 1 < len(board):
             return CoordinateWithFarmerSide(
                 Coordinate(coordinate_with_farmer_side.coordinate.row,
                            coordinate_with_farmer_side.coordinate.column + 1),
                 SideModificationUtil.opposite_farmer_side(coordinate_with_farmer_side.farmer_side)
             )
-        elif coordinate_with_farmer_side.farmer_side.get_side() == Side.BOTTOM:
+        elif coordinate_with_farmer_side.farmer_side.get_side() == Side.BOTTOM and coordinate_with_farmer_side.coordinate.row + 1 < len(board):
             return CoordinateWithFarmerSide(
                 Coordinate(coordinate_with_farmer_side.coordinate.row + 1,
                            coordinate_with_farmer_side.coordinate.column),
                 SideModificationUtil.opposite_farmer_side(coordinate_with_farmer_side.farmer_side)
             )
-        elif coordinate_with_farmer_side.farmer_side.get_side() == Side.LEFT:
+        elif coordinate_with_farmer_side.farmer_side.get_side() == Side.LEFT and coordinate_with_farmer_side.coordinate.column - 1 > 0:
             return CoordinateWithFarmerSide(
                 Coordinate(coordinate_with_farmer_side.coordinate.row,
                            coordinate_with_farmer_side.coordinate.column - 1),

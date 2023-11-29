@@ -15,13 +15,15 @@ class CityUtil:
     @classmethod
     def find_city(cls, game_state: CarcassonneGameState, city_position: CoordinateWithSide) -> City:
         cities: Set[CoordinateWithSide] = set(cls.cities_for_position(game_state, city_position))
-        open_edges: Set[CoordinateWithSide] = set(map(lambda x: cls.opposite_edge(x), cities))
+        open_edges: Set[CoordinateWithSide] = set(map(lambda x: cls.opposite_edge(x, game_state.board), cities))
+        open_edges.discard(None)
         explored: Set[CoordinateWithSide] = cities.union(open_edges)
         while len(open_edges) > 0:
             open_edge: CoordinateWithSide = open_edges.pop()
             new_cities = cls.cities_for_position(game_state, open_edge)
             cities = cities.union(new_cities)
-            new_open_edges = set(map(lambda x: cls.opposite_edge(x), new_cities))
+            new_open_edges = set(map(lambda x: cls.opposite_edge(x, game_state.board), new_cities))
+            new_open_edges.discard(None)
             explored = explored.union(new_cities)
             new_open_edge: CoordinateWithSide
             for new_open_edge in new_open_edges:
@@ -33,17 +35,17 @@ class CityUtil:
         return City(city_positions=cities, finished=finished)
 
     @classmethod
-    def opposite_edge(cls, city_position: CoordinateWithSide):
-        if city_position.side == Side.TOP:
+    def opposite_edge(cls, city_position: CoordinateWithSide, board):
+        if city_position.side == Side.TOP and city_position.coordinate.row - 1 > 0:
             return CoordinateWithSide(Coordinate(city_position.coordinate.row - 1, city_position.coordinate.column),
                                       Side.BOTTOM)
-        elif city_position.side == Side.RIGHT:
+        elif city_position.side == Side.RIGHT and city_position.coordinate.column + 1 < len(board):
             return CoordinateWithSide(Coordinate(city_position.coordinate.row, city_position.coordinate.column + 1),
                                       Side.LEFT)
-        elif city_position.side == Side.BOTTOM:
+        elif city_position.side == Side.BOTTOM and city_position.coordinate.row + 1 < len(board):
             return CoordinateWithSide(Coordinate(city_position.coordinate.row + 1, city_position.coordinate.column),
                                       Side.TOP)
-        elif city_position.side == Side.LEFT:
+        elif city_position.side == Side.LEFT and city_position.coordinate.column - 1 > 0:
             return CoordinateWithSide(Coordinate(city_position.coordinate.row, city_position.coordinate.column - 1),
                                       Side.RIGHT)
 

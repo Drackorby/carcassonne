@@ -25,9 +25,10 @@ class CarcassonneGameState:
             tile_sets: [TileSet] = (TileSet.BASE, TileSet.THE_RIVER, TileSet.INNS_AND_CATHEDRALS),
             supplementary_rules: [SupplementaryRule] = (SupplementaryRule.FARMERS, SupplementaryRule.ABBOTS),
             players: int = 2,
-            board_size: (int, int) = (30, 30),
-            starting_position: Coordinate = Coordinate(6, 15)
+            board_size: (int, int) = (10, 10),
+            starting_position: Coordinate = Coordinate(5, 5)
     ):
+        self.tile_sets = tile_sets
         self.deck = self.initialize_deck(tile_sets=tile_sets)
         self.supplementary_rules: [SupplementaryRule] = supplementary_rules
         self.board: [[Tile]] = [[None for column in range(board_size[1])] for row in range(board_size[0])]
@@ -52,7 +53,7 @@ class CarcassonneGameState:
         else:
             return self.board[row][column]
 
-    def get_obs_city(self,city):
+    def get_obs_city(self, city):
         if len(city) <= 0:
             return -1
         elif len(city) == 1:
@@ -104,7 +105,7 @@ class CarcassonneGameState:
                 return 13
         elif len(city) == 4:
             return 14
-               
+        print("Error city")
         return -2
 
     def get_obs_road(self,road):
@@ -153,43 +154,41 @@ class CarcassonneGameState:
                 return 8
             if road.b == Side.LEFT:
                 return 9
-               
+        print("Error road")
         return -2
 
     def get_meeple_plane_obs(self,player, side, farmer):
 
         multiplier = 5
 
-        if farmer:
-            multiplier = 9
-        if side == Side.TOP:
-            return 0 + player * multiplier
-        if side == Side.RIGHT:
-            return 1 + player * multiplier
-        if side == Side.BOTTOM:
-            return 2 + player * multiplier
-        if side == Side.LEFT:
-            return 3 + player * multiplier
-        if side == Side.CENTER:
-            return 4 + player * multiplier
-        
-        if farmer:
+        if not farmer:
+            if side == Side.TOP:
+                return 0 + player * multiplier
+            if side == Side.RIGHT:
+                return 1 + player * multiplier
+            if side == Side.BOTTOM:
+                return 2 + player * multiplier
+            if side == Side.LEFT:
+                return 3 + player * multiplier
+            if side == Side.CENTER:
+                return 4 + player * multiplier
+        elif farmer:
+            if side == Side.CENTER:
+                return 0 + player * multiplier
             if side == Side.TOP_LEFT:
-                return 5 + player * multiplier
+                return 1 + player * multiplier
             if side == Side.TOP_RIGHT:
-                return 6 + player * multiplier
+                return 2 + player * multiplier
             if side == Side.BOTTOM_LEFT:
-                return 7 + player * multiplier
+                return 3 + player * multiplier
             if side == Side.BOTTOM_RIGHT:
-                return 8 + player * multiplier
+                return 4 + player * multiplier
 
-        
+        print("Error meeple plane")
         return -1
-
 
     def get_farm_connections(self, farm):
         connections = farm.tile_connections
-
         if len(connections) == 0:
             return 0
         if len(connections) == 1:
@@ -210,6 +209,7 @@ class CarcassonneGameState:
             if connections[0] == FarmerSide.TLL:
                 return 8
         if len(connections) == 2:
+
             if FarmerSide.TLT in connections and FarmerSide.TRT in connections :
                 return 9
             if FarmerSide.TLT in connections and FarmerSide.BRR in connections :
@@ -246,106 +246,122 @@ class CarcassonneGameState:
                 return 23
             if FarmerSide.BLL in connections and FarmerSide.TLL in connections :
                 return 24
-            
-        if len(connections) == 3:
 
-            if FarmerSide.TLT in connections and FarmerSide.TRT in connections and FarmerSide.TRR:
+            if FarmerSide.BLB in connections and FarmerSide.TLL in connections :
                 return 25
-            if FarmerSide.TRR in connections and FarmerSide.BRR in connections and FarmerSide.BRB:
+            if FarmerSide.TLL in connections and FarmerSide.TRT in connections :
                 return 26
-            if FarmerSide.BRB in connections and FarmerSide.BLB in connections and FarmerSide.BLL:
+            if FarmerSide.BLB in connections and FarmerSide.BRR in connections :
                 return 27
-            if FarmerSide.TLT in connections and FarmerSide.BLL in connections and FarmerSide.TLL:
+            if FarmerSide.BRR in connections and FarmerSide.TRT in connections :
                 return 28
-            
-            if FarmerSide.BLB in connections and FarmerSide.BLL in connections and FarmerSide.TLL:
+        if len(connections) == 3:
+            if FarmerSide.TLT in connections and FarmerSide.TRT in connections and FarmerSide.TRR:
                 return 29
-            if FarmerSide.TLT in connections and FarmerSide.TRT in connections and FarmerSide.TLL:
+            if FarmerSide.TRR in connections and FarmerSide.BRR in connections and FarmerSide.BRB:
                 return 30
-            if FarmerSide.TRT in connections and FarmerSide.TRR in connections and FarmerSide.BRR:
+            if FarmerSide.BRB in connections and FarmerSide.BLB in connections and FarmerSide.BLL:
                 return 31
-            if FarmerSide.BRR in connections and FarmerSide.BRB in connections and FarmerSide.BLB:
+            if FarmerSide.TLT in connections and FarmerSide.BLL in connections and FarmerSide.TLL:
                 return 32
             
-
+            if FarmerSide.BLB in connections and FarmerSide.BLL in connections and FarmerSide.TLL:
+                return 33
+            if FarmerSide.TLT in connections and FarmerSide.TRT in connections and FarmerSide.TLL:
+                return 34
+            if FarmerSide.TRT in connections and FarmerSide.TRR in connections and FarmerSide.BRR:
+                return 35
+            if FarmerSide.BRR in connections and FarmerSide.BRB in connections and FarmerSide.BLB:
+                return 36
         if len(connections) == 4:
             if FarmerSide.TLT in connections and FarmerSide.BLB in connections and FarmerSide.BLL in connections and FarmerSide.TLL in connections :
-                return 33
-            if FarmerSide.TLT in connections and FarmerSide.TRT in connections and FarmerSide.TRR in connections and FarmerSide.TLL in connections :
-                return 34
-            if FarmerSide.TRT in connections and FarmerSide.TRR in connections and FarmerSide.BRR in connections and FarmerSide.BRB in connections :
-                return 35
-            if FarmerSide.BRR in connections and FarmerSide.BRB in connections and FarmerSide.BLB in connections and FarmerSide.BLL in connections :
-                return 36
-            if FarmerSide.TLT in connections and FarmerSide.TRT in connections and FarmerSide.BRB in connections and FarmerSide.BLB in connections :
                 return 37
-            if FarmerSide.TRR in connections and FarmerSide.BRR in connections and FarmerSide.BLL in connections and FarmerSide.TLL in connections :
+            if FarmerSide.TLT in connections and FarmerSide.TRT in connections and FarmerSide.TRR in connections and FarmerSide.TLL in connections :
                 return 38
-            if FarmerSide.TRT in connections and FarmerSide.TRR in connections and FarmerSide.BLL in connections and FarmerSide.BLB in connections :
+            if FarmerSide.TRT in connections and FarmerSide.TRR in connections and FarmerSide.BRR in connections and FarmerSide.BRB in connections :
                 return 39
-            if FarmerSide.TLT in connections and FarmerSide.BRR in connections and FarmerSide.BRB in connections and FarmerSide.TLL in connections :
+            if FarmerSide.BRR in connections and FarmerSide.BRB in connections and FarmerSide.BLB in connections and FarmerSide.BLL in connections :
                 return 40
-            if FarmerSide.TLT in connections and FarmerSide.TRT in connections and FarmerSide.TRR in connections and FarmerSide.BLB in connections :
+            if FarmerSide.TLT in connections and FarmerSide.TRT in connections and FarmerSide.BRB in connections and FarmerSide.BLB in connections :
                 return 41
-            if FarmerSide.TRR in connections and FarmerSide.BRR in connections and FarmerSide.BRB in connections and FarmerSide.TLL in connections :
+            if FarmerSide.TRR in connections and FarmerSide.BRR in connections and FarmerSide.BLL in connections and FarmerSide.TLL in connections :
                 return 42
-            if FarmerSide.TRT in connections and FarmerSide.BRB in connections and FarmerSide.BLB in connections and FarmerSide.BLL in connections :
+            if FarmerSide.TRT in connections and FarmerSide.TRR in connections and FarmerSide.BLL in connections and FarmerSide.BLB in connections :
                 return 43
-            if FarmerSide.TLT in connections and FarmerSide.BRR in connections and FarmerSide.BLL in connections and FarmerSide.TLL in connections :
+            if FarmerSide.TLT in connections and FarmerSide.BRR in connections and FarmerSide.BRB in connections and FarmerSide.TLL in connections :
                 return 44
-            if FarmerSide.TLT in connections and FarmerSide.TRT in connections and FarmerSide.TRR in connections and FarmerSide.BRR in connections :
+            if FarmerSide.TLT in connections and FarmerSide.TRT in connections and FarmerSide.TRR in connections and FarmerSide.BLB in connections :
                 return 45
-            if FarmerSide.TRR in connections and FarmerSide.BRR in connections and FarmerSide.BRB in connections and FarmerSide.BLB in connections :
+            if FarmerSide.TRR in connections and FarmerSide.BRR in connections and FarmerSide.BRB in connections and FarmerSide.TLL in connections :
                 return 46
-            if FarmerSide.BRB in connections and FarmerSide.BLB in connections and FarmerSide.BLL in connections and FarmerSide.TLL in connections :
+            if FarmerSide.TRT in connections and FarmerSide.BRB in connections and FarmerSide.BLB in connections and FarmerSide.BLL in connections :
                 return 47
-            if FarmerSide.TLT in connections and FarmerSide.TRT in connections and FarmerSide.BLL in connections and FarmerSide.TLL in connections :
-                return 48
-            if FarmerSide.TLT in connections and FarmerSide.TRT in connections and FarmerSide.BRB in connections and FarmerSide.TLL in connections :
+            if FarmerSide.TLT in connections and FarmerSide.BRR in connections and FarmerSide.BLL in connections and FarmerSide.TLL in connections :
                 return 49
-            if FarmerSide.TRR in connections and FarmerSide.BLB in connections and FarmerSide.BLL in connections and FarmerSide.TLL in connections :
+            if FarmerSide.TLT in connections and FarmerSide.TRT in connections and FarmerSide.TRR in connections and FarmerSide.BRR in connections :
+                return 49
+            if FarmerSide.TRR in connections and FarmerSide.BRR in connections and FarmerSide.BRB in connections and FarmerSide.BLB in connections :
                 return 50
-            
+            if FarmerSide.BRB in connections and FarmerSide.BLB in connections and FarmerSide.BLL in connections and FarmerSide.TLL in connections :
+                return 51
+            if FarmerSide.TLT in connections and FarmerSide.TRT in connections and FarmerSide.BLL in connections and FarmerSide.TLL in connections :
+                return 52
+            if FarmerSide.TLT in connections and FarmerSide.TRT in connections and FarmerSide.BRB in connections and FarmerSide.TLL in connections :
+                return 53
+            if FarmerSide.TRR in connections and FarmerSide.BLB in connections and FarmerSide.BLL in connections and FarmerSide.TLL in connections :
+                return 54
+            if FarmerSide.BLB in connections and FarmerSide.BRB in connections and FarmerSide.BRR in connections and FarmerSide.TLT in connections :
+                return 55
+            if FarmerSide.BLL in connections and FarmerSide.BRR in connections and FarmerSide.TRR in connections and FarmerSide.TRT in connections :
+                return 56
         if len(connections) == 6:
             if FarmerSide.TLT in connections and FarmerSide.TRT in connections and FarmerSide.TRR in connections and FarmerSide.BRR in connections and FarmerSide.BRB in connections and FarmerSide.TLL in connections:
-                return 50
-            if FarmerSide.TRT in connections and FarmerSide.TRR in connections and FarmerSide.BRR in connections and FarmerSide.BRB in connections and FarmerSide.BLB in connections and FarmerSide.BLL in connections:
-                return 51
-            if FarmerSide.TLT in connections and FarmerSide.BRR in connections and FarmerSide.BRB in connections and FarmerSide.BLB in connections and FarmerSide.BLL in connections and FarmerSide.TLL in connections:
-                return 52
-            if FarmerSide.TLT in connections and FarmerSide.TRT in connections and FarmerSide.TRR in connections and FarmerSide.BLB in connections and FarmerSide.BLL in connections and FarmerSide.TLL in connections:
-                return 53
-            if FarmerSide.TRR in connections and FarmerSide.BRR in connections and FarmerSide.BRB in connections and FarmerSide.BLB in connections and FarmerSide.BLL in connections and FarmerSide.TLL in connections:
-                return 54
-            if FarmerSide.TLT in connections and FarmerSide.TRT in connections and FarmerSide.BRB in connections and FarmerSide.BLB in connections and FarmerSide.BLL in connections and FarmerSide.TLL in connections:
-                return 55
-            if FarmerSide.TLT in connections and FarmerSide.TRT in connections and FarmerSide.TRR in connections and FarmerSide.BRR in connections and FarmerSide.BLL in connections and FarmerSide.TLL in connections:
-                return 56
-            if FarmerSide.TLT in connections and FarmerSide.TRT in connections and FarmerSide.TRR in connections and FarmerSide.BRB in connections and FarmerSide.BRB in connections and FarmerSide.BLB in connections:
                 return 57
+            if FarmerSide.TRT in connections and FarmerSide.TRR in connections and FarmerSide.BRR in connections and FarmerSide.BRB in connections and FarmerSide.BLB in connections and FarmerSide.BLL in connections:
+                return 58
+            if FarmerSide.TLT in connections and FarmerSide.BRR in connections and FarmerSide.BRB in connections and FarmerSide.BLB in connections and FarmerSide.BLL in connections and FarmerSide.TLL in connections:
+                return 59
+            if FarmerSide.TLT in connections and FarmerSide.TRT in connections and FarmerSide.TRR in connections and FarmerSide.BLB in connections and FarmerSide.BLL in connections and FarmerSide.TLL in connections:
+                return 60
+            if FarmerSide.TRR in connections and FarmerSide.BRR in connections and FarmerSide.BRB in connections and FarmerSide.BLB in connections and FarmerSide.BLL in connections and FarmerSide.TLL in connections:
+                return 61
+            if FarmerSide.TLT in connections and FarmerSide.TRT in connections and FarmerSide.BRB in connections and FarmerSide.BLB in connections and FarmerSide.BLL in connections and FarmerSide.TLL in connections:
+                return 62
+            if FarmerSide.TLT in connections and FarmerSide.TRT in connections and FarmerSide.TRR in connections and FarmerSide.BRR in connections and FarmerSide.BLL in connections and FarmerSide.TLL in connections:
+                return 63
+            if FarmerSide.TLT in connections and FarmerSide.TRT in connections and FarmerSide.TRR in connections and FarmerSide.BRB in connections and FarmerSide.BRB in connections and FarmerSide.BLB in connections:
+                return 64
         if len(connections) == 8:
-            return 58
+            return 65
+        print("Error farm connections")
+        print(farm.tile_connections)
         return -1
-            
 
-    def get_obs(self):
+    def get_other_player(self, p_id):
+        if p_id == 0:
+            return 1
+        return 0
 
-        
+    def reverse_array(self, array):
+        return [array[1], array[0]]
+
+    def get_obs(self, reverse_player=False):
         city_planes = np.zeros((15,len(self.board),len(self.board)),dtype=np.intc)
         road_planes = np.zeros((10,len(self.board),len(self.board)),dtype=np.intc)
         chapel_plane = np.zeros((len(self.board),len(self.board)),dtype=np.intc)
         shield_plane = np.zeros((len(self.board),len(self.board)),dtype=np.intc)
         flowers_plane = np.zeros((len(self.board),len(self.board)),dtype=np.intc)
-        field_planes = np.zeros((59,len(self.board),len(self.board)),dtype=np.intc)
+        field_planes = np.zeros((66,len(self.board),len(self.board)),dtype=np.intc)
         # Next we will have n planes per player and most of them will need 5 planes to indicate the position in a tile
         meeple_planes = np.zeros((5*self.players , len(self.board),len(self.board)),dtype=np.intc)
         abbot_planes = np.zeros( (self.players ,len(self.board),len(self.board)),dtype=np.intc) # This only needs one plane per player
-        farmer_planes = np.zeros((9*self.players , len(self.board),len(self.board)),dtype=np.intc)
-        big_farmer_planes = np.zeros((9*self.players , len(self.board),len(self.board)),dtype=np.intc)
+        farmer_planes = np.zeros((5*self.players , len(self.board),len(self.board)),dtype=np.intc)
+        big_farmer_planes = np.zeros((5*self.players , len(self.board),len(self.board)),dtype=np.intc)
         big_meeples_planes =np.zeros((5*self.players , len(self.board),len(self.board)),dtype=np.intc)
         
         
-        for player_id in range(len(self.placed_meeples)):
+        for p_id in range(len(self.placed_meeples)):
+            player_id = p_id if not reverse_player else self.get_other_player(p_id)
             player_meeples = self.placed_meeples[player_id]
             for meeple in player_meeples:
                 coordinate = meeple.coordinate_with_side.coordinate
@@ -368,12 +384,12 @@ class CarcassonneGameState:
                 if tile:
                     for city in tile.city:
                         result = self.get_obs_city(city)
-                        if result >= 0 :
+                        if result >= 0:
                             city_planes[result,i,j] = 1
                     
                     for road in tile.road:
                         result = self.get_obs_road(road)
-                        if result >= 0 :
+                        if result >= 0:
                             road_planes[result,i,j] = 1
                     if tile.shield:
                         shield_plane[i,j] = 1
@@ -411,37 +427,69 @@ class CarcassonneGameState:
                     if result >= 0:
                         next_tile_description[5] = result
                             
-
+        elif self.phase == GamePhase.TILES and not self.is_terminated():
+            print("No next tile??")
         phase = 0
         if self.phase == GamePhase.MEEPLES:
             phase = 1
-        
+
+
+
+            
         other_properties_plane = np.concatenate((
-        next_tile_description,
-        np.array(self.meeples,dtype=np.intc),
-        np.array(self.abbots,dtype=np.intc),
-        np.array(self.big_meeples,dtype=np.intc),
-        np.array(self.placed_meeples,dtype=np.intc).flatten(),
-        np.array(self.scores,dtype=np.intc),
-        [int(self.current_player)],
-        [int(phase)]),dtype=np.intc)
-
-
+            next_tile_description,
+            np.array(self.meeples if not reverse_player else self.reverse_array(self.meeples), dtype=np.intc),
+            np.array(self.scores if not reverse_player else self.reverse_array(self.scores), dtype=np.intc),
+            [int(self.current_player if not reverse_player else self.get_other_player(self.current_player))],
+            [int(phase)]),
+            dtype=np.intc)
+        if  SupplementaryRule.ABBOTS in self.supplementary_rules:
+            other_properties_plane = np.concatenate((
+                next_tile_description,
+                np.array(self.meeples if not reverse_player else self.reverse_array(self.meeples), dtype=np.intc),
+                np.array(self.abbots if not reverse_player else self.reverse_array(self.abbots), dtype=np.intc),
+                np.array(self.scores if not reverse_player else self.reverse_array(self.scores), dtype=np.intc),
+                [int(self.current_player if not reverse_player else self.get_other_player(self.current_player))],
+                [int(phase)]),
+                dtype=np.intc)
+        elif TileSet.INNS_AND_CATHEDRALS in self.tile_sets:
+            other_properties_plane = np.concatenate((
+                next_tile_description,
+                np.array(self.meeples if not reverse_player else self.reverse_array(self.meeples), dtype=np.intc),
+                np.array(self.big_meeples if not reverse_player else self.reverse_array(self.big_meeples), dtype=np.intc),
+                np.array(self.scores if not reverse_player else self.reverse_array(self.scores), dtype=np.intc),
+                [int(self.current_player if not reverse_player else self.get_other_player(self.current_player))],
+                [int(phase)]),
+                dtype=np.intc)
+        elif TileSet.INNS_AND_CATHEDRALS in self.tile_sets and SupplementaryRule.ABBOTS in self.supplementary_rules:
+            other_properties_plane = np.concatenate((
+                next_tile_description,
+                np.array(self.meeples if not reverse_player else self.reverse_array(self.meeples), dtype=np.intc),
+                np.array(self.abbots if not reverse_player else self.reverse_array(self.abbots), dtype=np.intc),
+                np.array(self.big_meeples if not reverse_player else self.reverse_array(self.big_meeples), dtype=np.intc),
+                # np.array(self.placed_meeples,dtype=np.intc).flatten(),
+                np.array(self.scores if not reverse_player else self.reverse_array(self.scores), dtype=np.intc),
+                [int(self.current_player if not reverse_player else self.get_other_player(self.current_player))],
+                [int(phase)]),
+                dtype=np.intc)
+        
         return { 
-        "city_planes": city_planes.flatten(),
-        "road_planes": road_planes.flatten(),
-        "chapel_plane": chapel_plane.flatten(),
-        "shield_plane": shield_plane.flatten(),
-        "flowers_plane": flowers_plane.flatten(),
-        "field_planes": field_planes.flatten(),
-        "meeple_planes": meeple_planes.flatten(),
-        "abbot_planes": abbot_planes.flatten(),
-        "farmer_planes": farmer_planes.flatten(),
-        "big_farmer_planes": big_farmer_planes.flatten(),
-        "big_meeples_planes": big_meeples_planes.flatten(),
-        "other_properties_plane": other_properties_plane.flatten()
+        "city_planes": city_planes,
+        "road_planes": road_planes,
+        "chapel_plane": chapel_plane,
+        "shield_plane": shield_plane,
+        "flowers_plane": flowers_plane,
+        "field_planes": field_planes,
+        "meeple_planes": meeple_planes,
+        "abbot_planes": abbot_planes,
+        "farmer_planes": farmer_planes,
+        "big_farmer_planes": big_farmer_planes,
+        "big_meeples_planes": big_meeples_planes,
+        "other_properties_plane": other_properties_plane
      }
         
+    def get_winner(self):
+        return max( (v, i) for i, v in enumerate(self.scores) )[1]
 
     def empty_board(self):
         for row in self.board:
@@ -451,7 +499,6 @@ class CarcassonneGameState:
         return True
 
     def is_terminated(self) -> bool:
-        self.get_obs()
         return self.next_tile is None
 
     def initialize_deck(self, tile_sets: [TileSet]):

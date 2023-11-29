@@ -24,7 +24,10 @@ class StateUpdater:
 
     @staticmethod
     def play_tile(game_state: CarcassonneGameState, tile_action: TileAction) -> CarcassonneGameState:
-        game_state.board[tile_action.coordinate.row][tile_action.coordinate.column] = tile_action.tile
+        row = int(tile_action.coordinate.row)
+        column = int(tile_action.coordinate.column)
+
+        game_state.board[row][column] = tile_action.tile
         game_state.phase = GamePhase.MEEPLES
         game_state.last_river_rotation = RiverRotationUtil.get_river_rotation(game_state=game_state,
                                                                               tile=tile_action.tile)

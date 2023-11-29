@@ -18,6 +18,12 @@ class FarmerSide(Enum):
 
     def __str__(self):
         return self.value
+    
+    def __eq__(self, other):
+        return self.value == other.value
+    
+    def __lt__(self, other):
+        return self.value < other.value
 
     def get_side(self) -> Side:
         if self.value[2] == "l":

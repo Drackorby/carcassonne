@@ -91,11 +91,12 @@ class Tile:
             return TerrainType.GRASS
 
     def to_json(self):
+        # print(self.city)
         return {
             "description": self.description,
             "river": list(map(lambda x: x.to_json(), self.river)),
             "road": list(map(lambda x: x.to_json(), self.road)),
-            "city": list(map(lambda x: x.to_json(), self.city)),
+            "city":  [[x.to_json() for x in sublist] for sublist in self.city],
             "grass": list(map(lambda x: x.to_json(), self.grass)),
             "farms": list(map(lambda x: x.to_json(), self.farms)),
             "shield": self.shield,
