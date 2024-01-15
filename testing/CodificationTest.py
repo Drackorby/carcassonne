@@ -1,3 +1,6 @@
+
+# This file conteins function that allow the checking of observations and actions to see if they are currently being coded and decoded correctly
+
 from wingedsheep.carcassonne.carcassonne_game import CarcassonneGame
 from wingedsheep.carcassonne.utils.action_util import ActionUtil
 from wingedsheep.carcassonne.tile_sets.supplementary_rules import SupplementaryRule
@@ -36,6 +39,9 @@ def validate_data(data, shapes):
             if data_shape != expected_shape:
                 warnings.append(f"Value for key '{key}' has incorrect shape. Expected: {expected_shape}, Actual: {data_shape}")
     return warnings
+
+
+
 def check_observation():
     # Test coding and decoding observations
 

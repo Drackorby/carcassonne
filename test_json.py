@@ -1,9 +1,6 @@
 import json
-# import random
-# from typing import Optional
 import numpy as np
 from wingedsheep.carcassonne.carcassonne_game import CarcassonneGame  
-# from wingedsheep.carcassonne.carcassonne_game_state import CarcassonneGameState
 from wingedsheep.carcassonne.objects.actions.action import Action  
 from wingedsheep.carcassonne.tile_sets.supplementary_rules import SupplementaryRule  
 from wingedsheep.carcassonne.tile_sets.tile_sets import TileSet  
@@ -36,7 +33,3 @@ with open("test_obs.json", "w") as file:
         obs = game.get_obs()
         json.dump(numpy_array_to_list(obs), file)
         break
-        # action: Optional[Action] = random.choice(valid_actions)
-        # if action is not None:
-        #     game.step(player, action)
-        # game.render()

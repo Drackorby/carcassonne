@@ -1,4 +1,6 @@
 
+# This code snippet allows us to count the unique farm connections in the current tile set
+
 from wingedsheep.carcassonne.tile_sets.base_deck import base_tiles
 from wingedsheep.carcassonne.tile_sets.the_river_deck import the_river_tiles
 from wingedsheep.carcassonne.tile_sets.inns_and_cathedrals_deck import inns_and_cathedrals_tiles
