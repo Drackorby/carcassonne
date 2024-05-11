@@ -168,7 +168,7 @@ if __name__ == '__main__':
         env.env_method("set_random", int(time.time()), indices=[i])
         time.sleep(1)
         
-    trajectories = env.env_method("generate_trajectory", 10000)
+    trajectories = env.env_method("generate_trajectory", 1000)
     
     trajectories = [item for sublist in trajectories for item in sublist]
 
@@ -325,7 +325,7 @@ if __name__ == '__main__':
                     total_concat_size += 128
                 elif key == "other_properties_plane":
                     # print(subspace.shape)
-                    extractors[key] = nn.Sequential(nn.Linear(611 , 128))
+                    extractors[key] = nn.Sequential(nn.Linear(618 , 128))
                     # print(key)
                     # summary(extractors[key], (1,) + subspace.shape)
                     total_concat_size += 128
@@ -371,7 +371,7 @@ if __name__ == '__main__':
 
             return concated
         
-    from stable_baselines3 import  PPO, A2C
+    from stable_baselines3 import PPO, A2C
         
          
     policy_kwargs = dict(
@@ -408,7 +408,7 @@ if __name__ == '__main__':
     train_expert_dataset, test_expert_dataset = random_split(
         expert_dataset, [train_size, test_size]
     )
-
+    print("trajectories generated")
     from torch.optim.lr_scheduler import StepLR
 
     a2c_student = A2C("MultiInputPolicy", env, verbose=1, policy_kwargs=policy_kwargs)
