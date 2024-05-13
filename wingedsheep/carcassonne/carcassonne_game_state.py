@@ -476,18 +476,26 @@ class CarcassonneGameState:
                 [int(phase)]),
                 dtype=np.intc)
 
+        tile_planes = np.concatenate((
+            city_planes,
+            road_planes,
+            [chapel_plane],
+            [shield_plane],
+            [flowers_plane],
+            field_planes
+        ))
+
+        chars_planes = np.concatenate((
+            meeple_planes,
+            abbot_planes,
+            farmer_planes,
+            big_farmer_planes,
+            big_meeples_planes,
+        ))
+
         return {
-            "city_planes": city_planes,
-            "road_planes": road_planes,
-            "chapel_plane": chapel_plane,
-            "shield_plane": shield_plane,
-            "flowers_plane": flowers_plane,
-            "field_planes": field_planes,
-            "meeple_planes": meeple_planes,
-            "abbot_planes": abbot_planes,
-            "farmer_planes": farmer_planes,
-            "big_farmer_planes": big_farmer_planes,
-            "big_meeples_planes": big_meeples_planes,
+            "tile_planes": tile_planes,
+            "chars_planes": chars_planes,
             "other_properties_plane": other_properties_plane
         }
 

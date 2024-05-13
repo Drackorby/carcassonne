@@ -94,17 +94,8 @@ class CarcassoneEnv(gym.Env):
 
         self.observation_space = spaces.Dict(
             {
-                "city_planes": spaces.MultiBinary([15, board_size, board_size]),
-                "road_planes": spaces.MultiBinary([10, board_size, board_size]),
-                "chapel_plane": spaces.MultiBinary([board_size, board_size]),
-                "shield_plane": spaces.MultiBinary([board_size, board_size]),
-                "flowers_plane": spaces.MultiBinary([board_size, board_size]),
-                "field_planes": spaces.MultiBinary([66, board_size, board_size]),
-                "meeple_planes": spaces.MultiBinary([5 * n_players, board_size, board_size]),
-                "abbot_planes": spaces.MultiBinary([n_players, board_size, board_size]),
-                "farmer_planes": spaces.MultiBinary([5 * n_players, board_size, board_size]),
-                "big_farmer_planes": spaces.MultiBinary([5 * n_players, board_size, board_size]),
-                "big_meeples_planes": spaces.MultiBinary([5 * n_players, board_size, board_size]),
+                "tile_planes": spaces.MultiBinary([94, board_size, board_size]),
+                "chars_planes": spaces.MultiBinary([42, board_size, board_size]),
                 "other_properties_plane": spaces.MultiDiscrete(other_properties_space)}
         )
 
@@ -132,7 +123,7 @@ class CarcassoneEnv(gym.Env):
         self.total_tried_moves = 0
         self.past_score = 0
         self.progress = 1
-        self.self_play = True
+        self.self_play = False
         self.ws = None
         self.id = -1
 
@@ -189,7 +180,7 @@ class CarcassoneEnv(gym.Env):
         self.game.reset(rand_seed)
         self.curr_step = 0
 
-        if self.ws is None and self.id != -1:
+        if self.self_play and self.ws is None and self.id != -1:
             self.ws = MyWebSocketClient('ws://127.0.0.1:8000/action/' + str(self.id) + "/")
 
             loop = asyncio.get_event_loop()
@@ -298,8 +289,8 @@ class CarcassoneEnv(gym.Env):
                     valid = self.is_action_valid(self.game.state.phase, valid_actions, action)
 
                 if valid:
-                    action = ActionUtil.create_action(action, self.game.state.next_tile,
-                                                      self.game.state.board, self.game.state, player)
+                    action = ActionUtil.create_action(action, self.game.state.next_tile, self.game.state.board,
+                                                      self.game.state, player)
             else:
                 valid_actions = self.game.get_possible_actions()
                 action = random.choice(valid_actions)

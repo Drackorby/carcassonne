@@ -26,10 +26,7 @@ from stable_baselines3 import PPO, A2C
 from torch.utils.data.dataset import Dataset, random_split
 from torch.optim.lr_scheduler import StepLR
 
-extractable = ["image", "big_farmer_planes", "big_meeples_planes", "chapel_plane", "city_planes", "farmer_planes",
-                   "field_planes",
-                   "flowers_plane", "meeple_planes", "other_properties_plane", "road_planes", "shield_plane",
-                   "abbot_planes"]
+extractable = ["tile_planes", "chars_planes", "other_properties_plane"]
 class CustomCombinedExtractorOld(BaseFeaturesExtractor):
     def __init__(self, observation_space: spaces.Dict):
         # We do not know features-dim here before going over all the items,
@@ -191,75 +188,28 @@ class CustomCombinedExtractor(BaseFeaturesExtractor):
         # so go over all the spaces and compute output feature sizes
         for key, subspace in observation_space.spaces.items():
             # print(key, subspace.shape)
-            if key == "image":
-                # We will just downsample one channel of the image by 4x4 and flatten.
-                # Assume the image is single-channel (subspace.shape[0] == 0)
-                extractors[key] = nn.Sequential(nn.MaxPool2d(2), nn.Flatten())
-                total_concat_size += subspace.shape[1] // 2 * subspace.shape[2] // 2
-            elif key == "vector":
-                # Run through a simple MLP
-                extractors[key] = nn.Linear(subspace.shape[0], 128)
-                total_concat_size += 128
-            elif key == "big_farmer_planes":
-                extractors[key] = nn.Sequential(nn.Conv2d(subspace.shape[0], 64, 5, stride=1, padding="same"),
-                                                nn.MaxPool2d(2),nn.BatchNorm2d(64), nn.Conv2d(64, 128, 3, stride=1, padding="same"),
-                                                nn.MaxPool2d(2),nn.BatchNorm2d(128), 
-                                                nn.Conv2d(128, 256, 3, stride=1, padding="same"),
-                                                nn.Flatten())
-                total_concat_size += 128
-            elif key == "big_meeples_planes":
-                extractors[key] = nn.Sequential(nn.Conv2d(subspace.shape[0], 64, 5, stride=1, padding="same"),
-                                                nn.MaxPool2d(2), nn.BatchNorm2d(64), nn.Conv2d(64, 128, 3, stride=1, padding="same"),
-                                                nn.MaxPool2d(2), nn.BatchNorm2d(128), 
-                                                nn.Conv2d(128, 256, 3, stride=1, padding="same"),
-                                                nn.Flatten())
-                total_concat_size += 128
-
-            elif key == "chapel_plane":
-                extractors[key] = nn.Sequential(nn.Flatten(), nn.Linear(subspace.shape[0] * subspace.shape[1], 256),
-                                                nn.LeakyReLU(), nn.Linear(256, 128), nn.LeakyReLU(),
-                                                nn.Linear(128, 64), nn.LeakyReLU())
-                total_concat_size += 64
-            elif key == "city_planes":
-                extractors[key] = nn.Sequential(nn.Conv2d(subspace.shape[0], 64, 5, stride=1, padding="same"),
-                                                nn.BatchNorm2d(64), nn.Conv2d(64, 64, 3, stride=1, padding="same"),
-                                                nn.MaxPool2d(2), nn.BatchNorm2d(64), 
-                                                nn.Conv2d(64, 128, 3, stride=1, padding="same"),
-                                                nn.MaxPool2d(2), nn.BatchNorm2d(128),
-                                                nn.Conv2d(128, 256, 3, stride=1, padding="same"),
-                                                nn.Flatten())
-                total_concat_size += 128
-            elif key == "farmer_planes":
-                extractors[key] = nn.Sequential(nn.Conv2d(subspace.shape[0], 64, 5, stride=1, padding="same"),
-                                                nn.MaxPool2d(2),
-                                                nn.BatchNorm2d(64), nn.Conv2d(64, 128, 3, stride=1, padding="same"),
-                                                nn.MaxPool2d(2),nn.BatchNorm2d(128), 
-                                                nn.Conv2d(128, 256, 3, stride=1, padding="same"),
-                                                nn.Flatten())
-                total_concat_size += 128
-            elif key == "field_planes":
+            if key == "tile_planes":
                 extractors[key] = nn.Sequential(nn.Conv2d(subspace.shape[0], 128, 3, stride=1, padding="same"),
                                                 nn.MaxPool2d(2),
                                                 nn.BatchNorm2d(128),
                                                 nn.Conv2d(128, 128, 3, stride=1, padding="same"),
-                                                nn.BatchNorm2d(128), 
+                                                nn.BatchNorm2d(128),
                                                 nn.Conv2d(128, 256, 3, stride=1, padding="same"),
                                                 nn.MaxPool2d(2),
-                                                nn.BatchNorm2d(256), 
+                                                nn.BatchNorm2d(256),
                                                 nn.Conv2d(256, 512, 3, stride=1, padding="same"),
                                                 nn.Flatten())
                 total_concat_size += 128
-            elif key == "flowers_plane":
-                extractors[key] = nn.Sequential(nn.Flatten(), nn.Linear(subspace.shape[0] * subspace.shape[1], 512),
-                                                nn.LeakyReLU(), nn.Linear(512, 128), nn.LeakyReLU())
-                total_concat_size += 64
-            elif key == "meeple_planes":
-                extractors[key] = nn.Sequential(nn.Conv2d(subspace.shape[0], 64, 5, stride=1, padding="same"),
+            elif key == "chars_planes":
+                extractors[key] = nn.Sequential(nn.Conv2d(subspace.shape[0], 128, 3, stride=1, padding="same"),
                                                 nn.MaxPool2d(2),
-                                                nn.BatchNorm2d(64), nn.Conv2d(64, 64, 3, stride=1, padding="same"),
+                                                nn.BatchNorm2d(128),
+                                                nn.Conv2d(128, 128, 3, stride=1, padding="same"),
+                                                nn.BatchNorm2d(128),
+                                                nn.Conv2d(128, 256, 3, stride=1, padding="same"),
                                                 nn.MaxPool2d(2),
-                                                nn.BatchNorm2d(64), 
-                                                nn.Conv2d(64, 128, 3, stride=1, padding="same"),
+                                                nn.BatchNorm2d(256),
+                                                nn.Conv2d(256, 512, 3, stride=1, padding="same"),
                                                 nn.Flatten())
                 total_concat_size += 128
             elif key == "other_properties_plane":
@@ -268,34 +218,9 @@ class CustomCombinedExtractor(BaseFeaturesExtractor):
                 # print(key)
                 # summary(extractors[key], (1,) + subspace.shape)
                 total_concat_size += 128
-            elif key == "road_planes":
-                extractors[key] = nn.Sequential(nn.Conv2d(subspace.shape[0], 64, 5, stride=1, padding="same"),
-                                                nn.MaxPool2d(2),
-                                                nn.BatchNorm2d(64), nn.Conv2d(64, 64, 3, stride=1, padding="same"),
-                                                nn.BatchNorm2d(64), 
-                                                nn.Conv2d(64, 128, 3, stride=1, padding="same"),
-                                                nn.MaxPool2d(2),
-                                                nn.BatchNorm2d(128), 
-                                                nn.Conv2d(128, 256, 3, stride=1, padding="same"),
-                                                nn.Flatten())
-                total_concat_size += 128
-            elif key == "shield_plane":
-                extractors[key] = nn.Sequential(nn.Flatten(), nn.Linear(subspace.shape[0] * subspace.shape[1], 512),
-                                                nn.LeakyReLU(), nn.Linear(512, 128), nn.LeakyReLU())
-                total_concat_size += 64
-            elif key == "abbot_planes":
-                extractors[key] = nn.Sequential(nn.Conv2d(subspace.shape[0], 64, 5, stride=1, padding="same"),
-                                                nn.MaxPool2d(2),
-                                                nn.BatchNorm2d(64), 
-                                                nn.Conv2d(64, 64, 3, stride=1, padding="same"),
-                                                nn.MaxPool2d(2),
-                                                nn.BatchNorm2d(64), 
-                                                nn.Conv2d(64, 128, 3, stride=1, padding="same"),
-                                                nn.Flatten())
 
-                total_concat_size += 64
 
-        total_concat_size = 8768
+        total_concat_size = 4352
         self.extractors = nn.ModuleDict(extractors)
         print("Total concat size: ", total_concat_size)
         self._features_dim = total_concat_size
@@ -304,6 +229,7 @@ class CustomCombinedExtractor(BaseFeaturesExtractor):
         encoded_tensor_list = []
 
         for key, extractor in self.extractors.items():
+            # print(key, observations[key].shape)
             extractor_value = extractor(observations[key])
             encoded_tensor_list.append(extractor_value)
         concated = th.cat(encoded_tensor_list, dim=1)
@@ -528,7 +454,7 @@ if __name__ == '__main__':
     policy_kwargs = dict(
         features_extractor_class=CustomCombinedExtractor,
         net_arch=[
-            dict(pi=[8192], vf=[4096, 1024, 256, 128], dropout=0.5, activation_fn=nn.LeakyReLU)
+            dict(pi=[4096], vf=[4096, 1024, 256, 128], dropout=0.5, activation_fn=nn.LeakyReLU)
         ]
     )
 

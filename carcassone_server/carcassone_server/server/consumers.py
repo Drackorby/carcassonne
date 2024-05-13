@@ -19,7 +19,7 @@ def numpy_array_to_list(obj):
 
 
 env = make_vec_env(CarcassoneEnv, seed=42, n_envs=1, vec_env_cls=SubprocVecEnv)
-model = PPO.load("../../carcassone_new/model_carcassone_curr_lern3", env, device="cpu")
+model = PPO.load("../../pretrained_carcassone3", env, device="cpu")
 
 
 class ModelConsumer(AsyncJsonWebsocketConsumer):
