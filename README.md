@@ -49,3 +49,16 @@ Code example for a game with two players
 	    if action is not None:  
 	        game.step(player, action)  
 	    game.render() 
+
+
+## RL setup
+
+Make sure to have all packages from the requirements.txt installed in order to work with the stable baselines algorithm.
+
+In order to be able to train with the self play setup you would need to create symlinks to the carcassone sjango server.
+
+In carcassone_server/carcassone_server execute: 
+```bash
+ ln -s ../../gym_data gym_data
+ ln -s ../../wingedsheep wingedsheep
+```
