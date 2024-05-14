@@ -183,56 +183,55 @@ class CustomCombinedExtractor(BaseFeaturesExtractor):
 
         extractors = {}
 
-        total_concat_size = 128
         # We need to know size of the output of this extractor,
         # so go over all the spaces and compute output feature sizes
         for key, subspace in observation_space.spaces.items():
             # print(key, subspace.shape)
             if key == "tile_planes":
                 extractors[key] = nn.Sequential(nn.Conv2d(subspace.shape[0], 128, 3, stride=1, padding="same"),
-                                                nn.MaxPool2d(2),
                                                 nn.BatchNorm2d(128),
                                                 nn.Conv2d(128, 128, 3, stride=1, padding="same"),
-                                                nn.BatchNorm2d(128),
+                                                nn.BatchNorm2d(128), nn.MaxPool2d(2),
+                                                nn.Conv2d(128, 128, 3, stride=1, padding="same"),
+                                                nn.BatchNorm2d(128), nn.MaxPool2d(2),
                                                 nn.Conv2d(128, 256, 3, stride=1, padding="same"),
-                                                nn.MaxPool2d(2),
                                                 nn.BatchNorm2d(256),
-                                                nn.Conv2d(256, 512, 3, stride=1, padding="same"),
                                                 nn.Flatten())
-                total_concat_size += 128
             elif key == "chars_planes":
-                extractors[key] = nn.Sequential(nn.Conv2d(subspace.shape[0], 128, 3, stride=1, padding="same"),
-                                                nn.MaxPool2d(2),
-                                                nn.BatchNorm2d(128),
+                extractors[key] = nn.Sequential(nn.Conv2d(subspace.shape[0], 64, 3, stride=1, padding="same"),
+                                                nn.BatchNorm2d(64),
+                                                nn.Conv2d(64, 64, 3, stride=1, padding="same"),
+                                                nn.BatchNorm2d(64), nn.MaxPool2d(2),
+                                                nn.Conv2d(64, 128, 3, stride=1, padding="same"),
+                                                nn.BatchNorm2d(128), nn.MaxPool2d(2),
                                                 nn.Conv2d(128, 128, 3, stride=1, padding="same"),
                                                 nn.BatchNorm2d(128),
-                                                nn.Conv2d(128, 256, 3, stride=1, padding="same"),
-                                                nn.MaxPool2d(2),
-                                                nn.BatchNorm2d(256),
-                                                nn.Conv2d(256, 512, 3, stride=1, padding="same"),
                                                 nn.Flatten())
-                total_concat_size += 128
+
             elif key == "other_properties_plane":
-                # print(subspace.shape)
-                extractors[key] = nn.Sequential(nn.Linear(618, 512), nn.LeakyReLU(), nn.Linear(512, 256))
-                # print(key)
-                # summary(extractors[key], (1,) + subspace.shape)
-                total_concat_size += 128
+                extractors[key] = nn.Sequential(nn.Linear(618, 128))
 
-
-        total_concat_size = 4352
+        total_concat_size = 1664
         self.extractors = nn.ModuleDict(extractors)
         print("Total concat size: ", total_concat_size)
+        # Update the features dim manually
         self._features_dim = total_concat_size
 
+    #         print(total_concat_size)
     def forward(self, observations) -> th.Tensor:
         encoded_tensor_list = []
 
+        # self.extractors contain nn.Modules that do all the processing.
         for key, extractor in self.extractors.items():
-            # print(key, observations[key].shape)
+            # print(key)
+            # print(observations[key].shape)
             extractor_value = extractor(observations[key])
+            # if key == "other_properties_plane":
+            # print("Extractor value: ",  extractor_value.shape)
             encoded_tensor_list.append(extractor_value)
+        # Return a (B, self._features_dim) PyTorch tensor, where B is batch dimension.
         concated = th.cat(encoded_tensor_list, dim=1)
+        # print("Forward total concat size: " , concated.shape)
 
         return concated
 
@@ -426,7 +425,7 @@ if __name__ == '__main__':
 
     board_size = 10
 
-    num_trajectories = 200
+    num_trajectories = 500
     
     env = make_vec_env(CarcassoneEnv, seed=42,  n_envs=16, vec_env_cls=SubprocVecEnv)
 
@@ -454,7 +453,7 @@ if __name__ == '__main__':
     policy_kwargs = dict(
         features_extractor_class=CustomCombinedExtractor,
         net_arch=[
-            dict(pi=[4096], vf=[4096, 1024, 256, 128], dropout=0.5, activation_fn=nn.LeakyReLU)
+            dict(pi=[1024], vf=[1024, 256, 128], dropout=0.5, activation_fn=nn.LeakyReLU)
         ]
     )
 
@@ -463,15 +462,13 @@ if __name__ == '__main__':
 
     # a2c_student = PPO.load("model_carcassone")
 
-    for a in range(100):
+    for a in range(2):
 
         for i in range(8):
-            env.env_method("set_random", int(time.time()), indices=[i])
+            env.unwrapped.env_method("set_random", int(time.time()), indices=[i])
             time.sleep(1)
 
-        # trajectories = list(chain.from_iterable(env.env_method("generate_trajectory", 100)))
-
-        trajectories = env.env_method("generate_trajectory", num_trajectories)
+        trajectories = env.unwrapped.env_method("generate_trajectory", num_trajectories)
 
         states = []
         actions = []
@@ -515,7 +512,7 @@ if __name__ == '__main__':
             log_interval=100,
             no_cuda=True,
             seed=1,
-            batch_size=512,
+            batch_size=256,
             test_batch_size=64,
         )
 
